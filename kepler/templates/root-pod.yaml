@@ -1,0 +1,56 @@
+{{/*
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and Greenhouse contributors
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rootstock-priv-pod
+  namespace: {{ include "kepler.namespace" . }}
+  labels:
+    {{- include "kepler.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "kepler.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: rootstock-priv-pod
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: "10%"
+  template:
+    metadata:
+      labels:
+        {{- include "kepler.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: rootstock-priv-pod
+      {{- with .Values.annotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      hostPID: true
+      containers:
+        - name: rootstock
+          image: {{ .Values.image.curlrepo }}
+          command: ["sh", "-c", "sleep infinity"]
+          securityContext:
+            privileged: true
+            runAsUser: 0
+            capabilities:
+              add:
+                - AUDIT_READ
+                - AUDIT_WRITE
+                - AUDIT_CONTROL
+          volumeMounts:
+            - name: host
+              mountPath: /host
+      volumes:
+        - name: host
+          hostPath:
+            path: /

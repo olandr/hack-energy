@@ -1,0 +1,25 @@
+image:
+  # -- Image pull policy
+  pullPolicy: IfNotPresent
+  # -- Image tag. Uses the chart appVersion when empty.
+  tag: "v0.13.0"
+
+fullnameOverride: energy
+rbac:
+  create: false
+service:
+  targetPort: http
+
+config:
+  log:
+    # -- Log level: debug, info, warn or error
+    level: debug
+    # -- Log format: text or json
+    format: text
+  host:
+    # -- Path to the host sysfs inside the container
+    sysfs: /testrootstock
+    # -- Path to the host procfs inside the container
+    procfs: /proc
+  cpu:
+    preferredMeters: [hwmon]
