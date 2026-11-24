@@ -38,7 +38,7 @@ service:
   # -- Service type
   type: ClusterIP
   # -- Service port
-  port: 28282
+  port: 9102
   # -- Target port on the pod. Defaults to `daemonset.port.name` when empty.
   targetPort: ""
   # -- Service protocol
@@ -209,7 +209,7 @@ config:
     configFile: ""
     # -- Addresses to listen on
     listenAddresses:
-      - :28282
+      - :9102
   debug:
     pprof:
       # -- Turn on pprof endpoints
@@ -270,18 +270,75 @@ config:
       # -- dcgm-exporter metrics cache TTL for MIG (0s disables cache)
       metricsCacheTTL: 2s
 
-# ServiceMonitor for Prometheus Operator
-serviceMonitor:
-  # -- Create a ServiceMonitor
-  enabled: false
-  # -- Scrape interval
-  interval: 5s
-  # -- Metrics path
-  path: /metrics
-  # -- Extra labels
-  labels: {}
-  # -- Extra annotations
-  annotations: {}
+# Prometheus-operator integration. Configures ServiceMonitor, PodMonitor and
+# PrometheusRule resources. ServiceMonitor scrapes the Service, PodMonitor scrapes
+# each DaemonSet pod directly (useful when the Service is disabled or when per-pod
+# labels like `pod` and `node` are needed on the metrics).
+prometheus:
+  # ServiceMonitor for Prometheus Operator
+  serviceMonitor:
+    # -- Create a ServiceMonitor
+    enabled: false
+    # -- Scrape interval
+    interval: 30s
+    # -- Scrape timeout. Empty uses the Prometheus default.
+    scrapeTimeout: ""
+    # -- Metrics path
+    path: /metrics
+    # -- Honor timestamps from Kepler on the Prometheus side
+    honorLabels: false
+    # -- Metric relabelings applied before ingestion
+    metricRelabelings: []
+    # -- Target relabelings applied before scrape
+    relabelings: []
+
+  # PodMonitor for Prometheus Operator. Scrapes DaemonSet pods directly.
+  podMonitor:
+    # -- Create a PodMonitor
+    enabled: false
+    # -- Scrape interval
+    interval: 30s
+    # -- Scrape timeout. Empty uses the Prometheus default.
+    scrapeTimeout: ""
+    # -- Metrics path
+    path: /metrics
+    # -- Honor timestamps from Kepler on the Prometheus side
+    honorLabels: false
+    # -- Metric relabelings applied before ingestion
+    metricRelabelings: []
+    # -- Target relabelings applied before scrape
+    relabelings: []
+
+  # -- Extra labels for every Prometheus resource (ServiceMonitor, PodMonitor,
+  # PrometheusRule). Set these so the kube-monitoring / prometheus-operator
+  # selectors pick the resources up, e.g. `plugin: kube-monitoring`.
+  additionalLabels: {}
+
+  # Default PrometheusRule set for Kepler.
+  rules:
+    # -- Create a PrometheusRule resource with the alerts enabled below
+    create: false
+    # -- Alerts to render. Each name must match a rule block in templates/prometheusrule.yaml.
+    enabled:
+      - KeplerDown
+      - KeplerScrapeFailing
+      - KeplerNodeJoulesStale
+      - KeplerHighCPU
+      - KeplerHighMemory
+    # -- Extra labels for the PrometheusRule metadata
+    labels: {}
+    # -- Extra annotations for the PrometheusRule metadata
+    annotations: {}
+    # -- Extra labels injected on every alert rule (e.g. support_group, service)
+    additionalRuleLabels: {}
+    # -- Playbook URLs for alerts. Override to point to custom runbooks.
+    # @default -- See values.yaml
+    playbooksUrls:
+      keplerDown: "https://github.com/cloudoperators/hack-energy/tree/main/kepler/playbooks/KeplerDown.md"
+      keplerScrapeFailing: "https://github.com/cloudoperators/hack-energy/tree/main/kepler/playbooks/KeplerScrapeFailing.md"
+      keplerNodeJoulesStale: "https://github.com/cloudoperators/hack-energy/tree/main/kepler/playbooks/KeplerNodeJoulesStale.md"
+      keplerHighCPU: "https://github.com/cloudoperators/hack-energy/tree/main/kepler/playbooks/KeplerHighCPU.md"
+      keplerHighMemory: "https://github.com/cloudoperators/hack-energy/tree/main/kepler/playbooks/KeplerHighMemory.md"
 
 # Grafana dashboard ConfigMaps, one per dashboard, discovered by the Grafana sidecar
 # (https://github.com/grafana-community/helm-charts/tree/main/charts/grafana#sidecar-for-dashboards)
@@ -308,7 +365,7 @@ networkPolicy:
   ingress:
     - ports:
         - protocol: TCP
-          port: 28282
+          port: 9102
   # -- Egress rules. Empty blocks all egress.
   egress: []
 

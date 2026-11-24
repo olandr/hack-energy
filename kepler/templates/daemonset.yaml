@@ -147,7 +147,7 @@ spec:
             - --kube.pod-namespace=$(POD_NAMESPACE)
           ports:
             - name: {{ include "kepler.portName" . }}
-              containerPort: 28282
+              containerPort: 9102
               protocol: TCP
           volumeMounts:
             - name: sysfs

@@ -85,6 +85,30 @@ Render a probe, defaulting httpGet.port to the metrics port name when it is not 
 {{- end }}
 
 {{/*
+Prometheus-specific labels merged onto ServiceMonitor, PodMonitor and PrometheusRule
+so the prometheus-operator selectors in kube-monitoring / prometheus plugins can
+pick the resources up.
+*/}}
+{{- define "kepler.prometheusLabels" -}}
+{{- if .Values.prometheus.additionalLabels }}
+{{ tpl (toYaml .Values.prometheus.additionalLabels) . }}
+{{- end }}
+{{- if .Values.prometheus.rules.labels }}
+{{ tpl (toYaml .Values.prometheus.rules.labels) . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Extra labels stamped onto every alert rule (e.g. support_group, service) used for
+alertmanager routing.
+*/}}
+{{- define "kepler.additionalRuleLabels" -}}
+{{- if .Values.prometheus.rules.additionalRuleLabels }}
+{{- tpl (toYaml .Values.prometheus.rules.additionalRuleLabels) . }}
+{{- end }}
+{{- end }}
+
+{{/*
 Create the namespace to use
 */}}
 {{- define "kepler.namespace" -}}

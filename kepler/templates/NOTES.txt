@@ -10,9 +10,17 @@ Kepler is installed as release "{{ .Release.Name }}" in namespace "{{ $namespace
 
   kubectl port-forward -n {{ $namespace }} svc/{{ $fullname }} {{ .Values.service.port }}:{{ .Values.service.port }}
   curl localhost:{{ .Values.service.port }}/metrics
-{{- if .Values.serviceMonitor.enabled }}
+{{- if .Values.prometheus.serviceMonitor.enabled }}
 
-A ServiceMonitor "{{ $fullname }}" was created, so Prometheus will scrape Kepler every {{ .Values.serviceMonitor.interval }}.
+A ServiceMonitor "{{ $fullname }}" was created, so Prometheus will scrape Kepler every {{ .Values.prometheus.serviceMonitor.interval }}.
+{{- end }}
+{{- if .Values.prometheus.podMonitor.enabled }}
+
+A PodMonitor "{{ $fullname }}" was created, so Prometheus will scrape each Kepler pod every {{ .Values.prometheus.podMonitor.interval }}.
+{{- end }}
+{{- if .Values.prometheus.rules.create }}
+
+PrometheusRule "{{ $fullname }}-alerts" was created with the following alerts enabled: {{ join ", " .Values.prometheus.rules.enabled }}.
 {{- end }}
 
 Installation guide:

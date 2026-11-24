@@ -81,7 +81,7 @@ dashboards:
 | config.monitor.staleness | string | `"500ms"` | How long data is reused before it is recomputed |
 | config.rapl.zones | list | `[]` | RAPL zones to enable. Empty enables the default zones. |
 | config.web.configFile | string | `""` | Path to a TLS config file |
-| config.web.listenAddresses | list | `[":28282"]` | Addresses to listen on |
+| config.web.listenAddresses | list | `[":9102"]` | Addresses to listen on |
 | daemonset.affinity | object | `{}` | Affinity rules |
 | daemonset.extraEnv | list | `[]` | Extra environment variables to add to the Kepler container |
 | daemonset.extraVolumeMounts | list | `[]` | Extra volume mounts to add to the Kepler container |
@@ -123,9 +123,9 @@ dashboards:
 | namespace.name | string | `"kepler"` | Namespace name, used when `namespace.create` is true |
 | networkPolicy.egress | list | `[]` | Egress rules. Empty blocks all egress. |
 | networkPolicy.enabled | bool | `false` | Create a NetworkPolicy |
-| networkPolicy.ingress | list | `[{"ports":[{"port":28282,"protocol":"TCP"}]}]` | Ingress rules |
+| networkPolicy.ingress | list | `[{"ports":[{"port":9102,"protocol":"TCP"}]}]` | Ingress rules |
 | rbac.create | bool | `true` | Create the ClusterRole and ClusterRoleBinding |
-| service.port | int | `28282` | Service port |
+| service.port | int | `9102` | Service port |
 | service.protocol | string | `"TCP"` | Service protocol |
 | service.targetPort | string | `""` | Target port on the pod. Defaults to `daemonset.port.name` when empty. |
 | service.type | string | `"ClusterIP"` | Service type |

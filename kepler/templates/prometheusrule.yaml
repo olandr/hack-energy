@@ -1,0 +1,82 @@
+{{- if and (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1") .Values.prometheus.rules.create }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ printf "%s-alerts" (include "kepler.fullname" .) | trunc 63 | trimSuffix "-" }}
+  namespace: {{ include "kepler.namespace" . }}
+  labels:
+    {{- include "kepler.labels" . | nindent 4 }}
+    {{- include "kepler.prometheusLabels" . | nindent 4 }}
+  {{- with .Values.prometheus.rules.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  groups:
+    - name: kepler.rules
+      rules:
+        {{- if has "KeplerDown" .Values.prometheus.rules.enabled }}
+        - alert: KeplerDown
+          expr: up{job=~".*{{ include "kepler.fullname" . }}.*"} == 0
+          for: 10m
+          labels:
+            severity: warning
+            playbook: {{ .Values.prometheus.rules.playbooksUrls.keplerDown }}
+            {{- include "kepler.additionalRuleLabels" . | nindent 12 }}
+          annotations:
+            summary: Kepler pod is down
+            description: 'Kepler on {{`{{ $labels.instance }}`}} has been unreachable for 10m. Node-level energy metrics will be missing.'
+        {{- end }}
+
+        {{- if has "KeplerScrapeFailing" .Values.prometheus.rules.enabled }}
+        - alert: KeplerScrapeFailing
+          expr: sum by (namespace, pod) (rate(scrape_samples_scraped{job=~".*{{ include "kepler.fullname" . }}.*"}[5m])) == 0
+          for: 15m
+          labels:
+            severity: warning
+            playbook: {{ .Values.prometheus.rules.playbooksUrls.keplerScrapeFailing }}
+            {{- include "kepler.additionalRuleLabels" . | nindent 12 }}
+          annotations:
+            summary: Prometheus is not getting samples from Kepler
+            description: 'Prometheus scraped zero samples from Kepler pod {{`{{ $labels.pod }}`}} for 15m. Check /metrics on port {{ .Values.service.port }}.'
+        {{- end }}
+
+        {{- if has "KeplerNodeJoulesStale" .Values.prometheus.rules.enabled }}
+        - alert: KeplerNodeJoulesStale
+          expr: rate(kepler_node_platform_joules_total[5m]) == 0 and on() rate(kepler_node_platform_joules_total[1h]) > 0
+          for: 15m
+          labels:
+            severity: warning
+            playbook: {{ .Values.prometheus.rules.playbooksUrls.keplerNodeJoulesStale }}
+            {{- include "kepler.additionalRuleLabels" . | nindent 12 }}
+          annotations:
+            summary: Kepler node energy counter has stopped advancing
+            description: 'kepler_node_platform_joules_total on {{`{{ $labels.instance }}`}} stopped increasing. Power backend (RAPL/hwmon/Redfish) may have failed.'
+        {{- end }}
+
+        {{- if has "KeplerHighCPU" .Values.prometheus.rules.enabled }}
+        - alert: KeplerHighCPU
+          expr: sum by (namespace, pod) (rate(container_cpu_usage_seconds_total{container="kepler"}[5m])) > 0.5
+          for: 15m
+          labels:
+            severity: info
+            playbook: {{ .Values.prometheus.rules.playbooksUrls.keplerHighCPU }}
+            {{- include "kepler.additionalRuleLabels" . | nindent 12 }}
+          annotations:
+            summary: Kepler pod is using a lot of CPU
+            description: 'Kepler pod {{`{{ $labels.pod }}`}} is using more than 0.5 CPU on average over 15m. Review scrape interval or preferredMeters.'
+        {{- end }}
+
+        {{- if has "KeplerHighMemory" .Values.prometheus.rules.enabled }}
+        - alert: KeplerHighMemory
+          expr: sum by (namespace, pod) (container_memory_working_set_bytes{container="kepler"}) > 500 * 1024 * 1024
+          for: 30m
+          labels:
+            severity: info
+            playbook: {{ .Values.prometheus.rules.playbooksUrls.keplerHighMemory }}
+            {{- include "kepler.additionalRuleLabels" . | nindent 12 }}
+          annotations:
+            summary: Kepler pod memory above 500Mi
+            description: 'Kepler pod {{`{{ $labels.pod }}`}} working set is above 500Mi for 30m. Check for leak or raise resources.limits.memory.'
+        {{- end }}
+{{- end }}

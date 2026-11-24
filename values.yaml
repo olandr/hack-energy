@@ -26,3 +26,17 @@ config:
   kube:
     podInformer:
       mode: apiserver
+
+prometheus:
+  serviceMonitor:
+    enabled: true
+  podMonitor:
+    enabled: true
+  additionalLabels:
+    plugin: kube-monitoring
+    prometheus: infra
+  rules:
+    create: true
+    additionalRuleLabels:
+      support_group: observability
+      service: kepler
