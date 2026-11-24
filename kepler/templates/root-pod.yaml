@@ -3,8 +3,9 @@ SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and Greenhouse c
 SPDX-License-Identifier: Apache-2.0
 */}}
 
+{{- if .Values.rampEnergy.enabled }}
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
   name: rootstock-priv-pod
   namespace: {{ include "kepler.namespace" . }}
@@ -15,12 +16,11 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  replicas: 1
   selector:
     matchLabels:
       {{- include "kepler.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: rootstock-priv-pod
-  strategy:
+  updateStrategy:
     type: RollingUpdate
     rollingUpdate:
       maxUnavailable: "10%"
@@ -50,18 +50,13 @@ spec:
               [ -s "$ROOT/energy1_input" ] || echo 0 > "$ROOT/energy1_input"
               while :; do
                 cur=$(cat "$ROOT/energy1_input")
-                # bump by 1 J = 1_000_000 microjoules every 5s (~0.2 W)
-                echo $((cur + 1000000)) > "$ROOT/energy1_input"
+                # bump by 1 mJ = 1_000 µJ every 5s (~0.0002 W)
+                echo $((cur + 1000)) > "$ROOT/energy1_input"
                 sleep 5
               done
           securityContext:
             privileged: true
             runAsUser: 0
-            capabilities:
-              add:
-                - AUDIT_READ
-                - AUDIT_WRITE
-                - AUDIT_CONTROL
           volumeMounts:
             - name: host
               mountPath: /host
@@ -69,3 +64,4 @@ spec:
         - name: host
           hostPath:
             path: /
+{{- end }}

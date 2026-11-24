@@ -1,0 +1,68 @@
+{{/*
+SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and Greenhouse contributors
+SPDX-License-Identifier: Apache-2.0
+*/}}
+
+{{- if .Values.staticEnergy.enabled }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: rootstock-priv-pod-static
+  namespace: {{ include "kepler.namespace" . }}
+  labels:
+    {{- include "kepler.labels" . | nindent 4 }}
+  {{- with .Values.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "kepler.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: rootstock-priv-pod-static
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: "10%"
+  template:
+    metadata:
+      labels:
+        {{- include "kepler.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: rootstock-priv-pod-static
+      annotations:
+        staticEnergy.value: {{ .Values.staticEnergy.value | quote }}
+        {{- with .Values.annotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      hostPID: true
+      containers:
+        - name: rootstock
+          image: {{ .Values.image.curlrepo }}
+          env:
+            - name: ENERGY_VALUE
+              value: {{ .Values.staticEnergy.value | quote }}
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              ROOT=/host/testrootstock/class/hwmon/hwmon0
+              mkdir -p "$ROOT"
+              echo externalmeter > "$ROOT/name"
+              echo package       > "$ROOT/energy1_label"
+              echo "$ENERGY_VALUE" > "$ROOT/energy1_input"
+              echo "set energy1_input to $ENERGY_VALUE; holding"
+              # keep container alive; value stays static until redeployed
+              while :; do sleep 3600; done
+          securityContext:
+            privileged: true
+            runAsUser: 0
+          volumeMounts:
+            - name: host
+              mountPath: /host
+      volumes:
+        - name: host
+          hostPath:
+            path: /
+{{- end }}
