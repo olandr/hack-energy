@@ -34,9 +34,14 @@ prometheus:
     enabled: true
   additionalLabels:
     plugin: kube-monitoring
-    prometheus: infra
+    prometheus: infra-collector
+    ccloud/service: kepler
+    ccloud/support-group: observability
   rules:
     create: true
     additionalRuleLabels:
       support_group: observability
       service: kepler
+
+perses:
+  enabled: true

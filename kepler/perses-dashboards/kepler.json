@@ -1,0 +1,591 @@
+{
+  "kind": "Dashboard",
+  "metadata": {
+    "name": "kepler",
+    "project": "observability",
+    "tags": [
+      "kepler",
+      "hackathon",
+      "rootstock"
+    ]
+  },
+  "spec": {
+    "display": {
+      "name": "Kepler — Energy & Power"
+    },
+    "duration": "1h",
+    "refreshInterval": "30s",
+    "variables": [
+      {
+        "kind": "ListVariable",
+        "spec": {
+          "name": "datasource",
+          "display": { "name": "Datasource", "hidden": false },
+          "allowAllValue": false,
+          "allowMultiple": false,
+          "plugin": {
+            "kind": "PrometheusLabelValuesVariable",
+            "spec": {
+              "labelName": "job",
+              "matchers": ["prometheus_build_info"]
+            }
+          }
+        }
+      },
+      {
+        "kind": "ListVariable",
+        "spec": {
+          "name": "job",
+          "display": { "name": "Job", "hidden": false },
+          "defaultValue": "energy",
+          "allowAllValue": false,
+          "allowMultiple": false,
+          "sort": "alphabetical-asc",
+          "plugin": {
+            "kind": "PrometheusLabelValuesVariable",
+            "spec": {
+              "labelName": "job",
+              "matchers": ["kepler_node_cpu_watts"]
+            }
+          }
+        }
+      },
+      {
+        "kind": "ListVariable",
+        "spec": {
+          "name": "node",
+          "display": { "name": "Node", "hidden": false },
+          "defaultValue": "$__all",
+          "allowAllValue": true,
+          "allowMultiple": true,
+          "sort": "alphabetical-asc",
+          "plugin": {
+            "kind": "PrometheusLabelValuesVariable",
+            "spec": {
+              "labelName": "node_name",
+              "matchers": ["kepler_node_cpu_watts{job=~\"$job\"}"]
+            }
+          }
+        }
+      },
+      {
+        "kind": "ListVariable",
+        "spec": {
+          "name": "namespace",
+          "display": { "name": "Namespace", "hidden": false },
+          "defaultValue": "$__all",
+          "allowAllValue": true,
+          "allowMultiple": true,
+          "sort": "alphabetical-asc",
+          "plugin": {
+            "kind": "PrometheusLabelValuesVariable",
+            "spec": {
+              "labelName": "container_namespace",
+              "matchers": ["kepler_container_cpu_watts{job=~\"$job\"}"]
+            }
+          }
+        }
+      }
+    ],
+    "panels": {
+      "stat_total_power": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Cluster Power (mW)",
+            "description": "Sum of node CPU power across all scraped nodes."
+          },
+          "plugin": {
+            "kind": "StatChart",
+            "spec": {
+              "calculation": "last-number",
+              "format": { "unit": "decimal", "decimalPlaces": 2 },
+              "sparkline": { "color": "#56B4E9", "width": 1 },
+              "thresholds": {
+                "steps": [
+                  { "color": "green", "value": 0 },
+                  { "color": "orange", "value": 500000 },
+                  { "color": "red", "value": 2000000 }
+                ]
+              }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "1000 * sum(kepler_node_cpu_watts{job=~\"$job\", node_name=~\"$node\"})",
+                    "seriesNameFormat": "cluster"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "stat_active_power": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Active Power (mW)",
+            "description": "Power attributed to running workloads."
+          },
+          "plugin": {
+            "kind": "StatChart",
+            "spec": {
+              "calculation": "last-number",
+              "format": { "unit": "decimal", "decimalPlaces": 2 },
+              "sparkline": { "color": "#E69F00", "width": 1 }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "1000 * sum(kepler_node_cpu_active_watts{job=~\"$job\", node_name=~\"$node\"})",
+                    "seriesNameFormat": "active"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "stat_idle_power": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Idle Power (mW)",
+            "description": "Baseline power the hardware draws even with no workload."
+          },
+          "plugin": {
+            "kind": "StatChart",
+            "spec": {
+              "calculation": "last-number",
+              "format": { "unit": "decimal", "decimalPlaces": 2 },
+              "sparkline": { "color": "#999999", "width": 1 }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "1000 * sum(kepler_node_cpu_idle_watts{job=~\"$job\", node_name=~\"$node\"})",
+                    "seriesNameFormat": "idle"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "stat_energy_1h": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Energy 1h (mJ)",
+            "description": "Total joules consumed in the last hour across selected nodes."
+          },
+          "plugin": {
+            "kind": "StatChart",
+            "spec": {
+              "calculation": "last-number",
+              "format": { "unit": "decimal", "decimalPlaces": 0 },
+              "sparkline": { "color": "#0072B2", "width": 1 }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "1000 * sum(increase(kepler_node_cpu_joules_total{job=~\"$job\", node_name=~\"$node\"}[1h]))",
+                    "seriesNameFormat": "joules"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "ts_power_by_node": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Power by Node (mW)",
+            "description": "Instantaneous CPU power per node."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {
+              "legend": {
+                "mode": "table",
+                "position": "bottom",
+                "values": ["last", "max", "mean"]
+              },
+              "yAxis": { "format": { "unit": "decimal", "decimalPlaces": 2 } },
+              "visual": { "display": "line", "lineWidth": 1.5, "areaOpacity": 0.1, "connectNulls": false }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "1000 * sum by (node_name) (kepler_node_cpu_watts{job=~\"$job\", node_name=~\"$node\"})",
+                    "seriesNameFormat": "{{node_name}}"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "ts_active_vs_idle": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Active vs Idle Power (mW)",
+            "description": "Cluster-wide split between workload and baseline power."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {
+              "legend": { "mode": "table", "position": "bottom", "values": ["last", "mean"] },
+              "yAxis": { "format": { "unit": "decimal", "decimalPlaces": 2 } },
+              "visual": { "display": "line", "stack": "all", "areaOpacity": 0.6, "lineWidth": 1 }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "1000 * sum(kepler_node_cpu_active_watts{job=~\"$job\", node_name=~\"$node\"})",
+                    "seriesNameFormat": "active"
+                  }
+                }
+              }
+            },
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "1000 * sum(kepler_node_cpu_idle_watts{job=~\"$job\", node_name=~\"$node\"})",
+                    "seriesNameFormat": "idle"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "ts_top_namespaces": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Top Namespaces by Power (mW)",
+            "description": "Top 10 namespaces by container-attributed CPU power."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {
+              "legend": { "mode": "table", "position": "bottom", "values": ["last", "mean", "max"] },
+              "yAxis": { "format": { "unit": "decimal", "decimalPlaces": 2 } },
+              "visual": { "display": "line", "lineWidth": 1.5, "areaOpacity": 0.2 }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "topk(10, 1000 * sum by (container_namespace) (kepler_container_cpu_watts{job=~\"$job\", node_name=~\"$node\", container_namespace=~\"$namespace\"}))",
+                    "seriesNameFormat": "{{container_namespace}}"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "ts_top_pods": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Top Pods by Power (mW)",
+            "description": "Top 10 pods by container-attributed CPU power."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {
+              "legend": { "mode": "table", "position": "bottom", "values": ["last", "max"] },
+              "yAxis": { "format": { "unit": "decimal", "decimalPlaces": 2 } },
+              "visual": { "display": "line", "lineWidth": 1.5, "areaOpacity": 0.2 }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "topk(10, 1000 * sum by (container_namespace, pod_name) (kepler_container_cpu_watts{job=~\"$job\", node_name=~\"$node\", container_namespace=~\"$namespace\"}))",
+                    "seriesNameFormat": "{{container_namespace}}/{{pod_name}}"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "ts_top_processes": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Top Processes by Power (mW)",
+            "description": "Top 10 processes by CPU power (across selected nodes)."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {
+              "legend": { "mode": "table", "position": "bottom", "values": ["last", "max"] },
+              "yAxis": { "format": { "unit": "decimal", "decimalPlaces": 2 } },
+              "visual": { "display": "line", "lineWidth": 1.5 }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "topk(10, 1000 * sum by (comm) (kepler_process_cpu_watts{job=~\"$job\", node_name=~\"$node\"}))",
+                    "seriesNameFormat": "{{comm}}"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "ts_energy_rate": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Energy Consumption Rate (mJ/s)",
+            "description": "Joules per second across the cluster."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {
+              "legend": { "mode": "list", "position": "bottom" },
+              "yAxis": { "format": { "unit": "decimal", "decimalPlaces": 2 } },
+              "visual": { "display": "line", "lineWidth": 1.5, "areaOpacity": 0.3 }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "1000 * sum(rate(kepler_node_cpu_joules_total{job=~\"$job\", node_name=~\"$node\"}[$__rate_interval]))",
+                    "seriesNameFormat": "cluster J/s"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "bar_node_energy_1h": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Energy by Node 1h (mJ)",
+            "description": "Joules consumed per node over the last hour."
+          },
+          "plugin": {
+            "kind": "BarChart",
+            "spec": {
+              "calculation": "sum",
+              "format": { "unit": "decimal", "decimalPlaces": 0 },
+              "sort": "desc"
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "1000 * sum by (node_name) (increase(kepler_node_cpu_joules_total{job=~\"$job\", node_name=~\"$node\"}[1h]))",
+                    "seriesNameFormat": "{{node_name}}"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "ts_zone_power": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "Power by RAPL Zone (mW)",
+            "description": "Node CPU power split by RAPL / hwmon zone."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {
+              "legend": { "mode": "table", "position": "bottom", "values": ["last", "mean"] },
+              "yAxis": { "format": { "unit": "decimal", "decimalPlaces": 2 } },
+              "visual": { "display": "line", "lineWidth": 1.2, "areaOpacity": 0.15 }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "1000 * sum by (zone) (kepler_node_cpu_watts{job=~\"$job\", node_name=~\"$node\"})",
+                    "seriesNameFormat": "{{zone}}"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "ts_pod_power_stack": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "All Pods Power — Stacked (mW)",
+            "description": "Instantaneous CPU power attributed per pod, stacked. Includes every pod kepler sees."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {
+              "legend": { "mode": "table", "position": "bottom", "values": ["last", "max"] },
+              "yAxis": { "format": { "unit": "decimal", "decimalPlaces": 2 } },
+              "visual": { "display": "line", "stack": "all", "areaOpacity": 0.6, "lineWidth": 0.25 }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "1000 * sum by (container_namespace, pod_name) (kepler_pod_cpu_watts{job=~\"$job\", node_name=~\"$node\", container_namespace=~\"$namespace\"})",
+                    "seriesNameFormat": "{{container_namespace}}/{{pod_name}}"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "table_pod_energy_1h": {
+        "kind": "Panel",
+        "spec": {
+          "display": {
+            "name": "All Pods Energy 1h (mJ)",
+            "description": "Total joules consumed per pod in the last hour across selected nodes/namespaces."
+          },
+          "plugin": {
+            "kind": "TimeSeriesChart",
+            "spec": {
+              "legend": { "mode": "table", "position": "right", "values": ["last"] },
+              "yAxis": { "format": { "unit": "decimal", "decimalPlaces": 0 } },
+              "visual": { "display": "bar", "lineWidth": 1 }
+            }
+          },
+          "queries": [
+            {
+              "kind": "TimeSeriesQuery",
+              "spec": {
+                "plugin": {
+                  "kind": "PrometheusTimeSeriesQuery",
+                  "spec": {
+                    "query": "1000 * sum by (container_namespace, pod_name) (increase(kepler_pod_cpu_joules_total{job=~\"$job\", node_name=~\"$node\", container_namespace=~\"$namespace\"}[1h]))",
+                    "seriesNameFormat": "{{container_namespace}}/{{pod_name}}"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "layouts": [
+      {
+        "kind": "Grid",
+        "spec": {
+          "display": { "title": "Overview", "collapse": { "open": true } },
+          "items": [
+            { "x": 0,  "y": 0, "width": 6, "height": 4, "content": { "$ref": "#/spec/panels/stat_total_power" } },
+            { "x": 6,  "y": 0, "width": 6, "height": 4, "content": { "$ref": "#/spec/panels/stat_active_power" } },
+            { "x": 12, "y": 0, "width": 6, "height": 4, "content": { "$ref": "#/spec/panels/stat_idle_power" } },
+            { "x": 18, "y": 0, "width": 6, "height": 4, "content": { "$ref": "#/spec/panels/stat_energy_1h" } }
+          ]
+        }
+      },
+      {
+        "kind": "Grid",
+        "spec": {
+          "display": { "title": "Nodes", "collapse": { "open": true } },
+          "items": [
+            { "x": 0,  "y": 0, "width": 12, "height": 9, "content": { "$ref": "#/spec/panels/ts_power_by_node" } },
+            { "x": 12, "y": 0, "width": 12, "height": 9, "content": { "$ref": "#/spec/panels/ts_active_vs_idle" } },
+            { "x": 0,  "y": 9, "width": 12, "height": 9, "content": { "$ref": "#/spec/panels/ts_energy_rate" } },
+            { "x": 12, "y": 9, "width": 12, "height": 9, "content": { "$ref": "#/spec/panels/bar_node_energy_1h" } },
+            { "x": 0,  "y": 18, "width": 24, "height": 8, "content": { "$ref": "#/spec/panels/ts_zone_power" } }
+          ]
+        }
+      },
+      {
+        "kind": "Grid",
+        "spec": {
+          "display": { "title": "Workloads", "collapse": { "open": true } },
+          "items": [
+            { "x": 0,  "y": 0, "width": 12, "height": 9, "content": { "$ref": "#/spec/panels/ts_top_namespaces" } },
+            { "x": 12, "y": 0, "width": 12, "height": 9, "content": { "$ref": "#/spec/panels/ts_top_pods" } },
+            { "x": 0,  "y": 9, "width": 24, "height": 9, "content": { "$ref": "#/spec/panels/ts_top_processes" } },
+            { "x": 0,  "y": 18, "width": 24, "height": 11, "content": { "$ref": "#/spec/panels/ts_pod_power_stack" } },
+            { "x": 0,  "y": 29, "width": 24, "height": 12, "content": { "$ref": "#/spec/panels/table_pod_energy_1h" } }
+          ]
+        }
+      }
+    ],
+    "datasources": {}
+  }
+}
