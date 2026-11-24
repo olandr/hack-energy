@@ -6,7 +6,7 @@ image:
 
 fullnameOverride: energy
 rbac:
-  create: false
+  create: true
 service:
   targetPort: http
 
@@ -23,3 +23,6 @@ config:
     procfs: /proc
   cpu:
     preferredMeters: [hwmon]
+  kube:
+    podInformer:
+      mode: apiserver

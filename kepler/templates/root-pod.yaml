@@ -38,7 +38,22 @@ spec:
       containers:
         - name: rootstock
           image: {{ .Values.image.curlrepo }}
-          command: ["sh", "-c", "sleep infinity"]
+          command:
+            - sh
+            - -c
+            - |
+              set -eu
+              ROOT=/host/testrootstock/class/hwmon/hwmon0
+              mkdir -p "$ROOT"
+              echo externalmeter > "$ROOT/name"
+              echo package       > "$ROOT/energy1_label"
+              [ -s "$ROOT/energy1_input" ] || echo 0 > "$ROOT/energy1_input"
+              while :; do
+                cur=$(cat "$ROOT/energy1_input")
+                # bump by 1 J = 1_000_000 microjoules every 5s (~0.2 W)
+                echo $((cur + 1000000)) > "$ROOT/energy1_input"
+                sleep 5
+              done
           securityContext:
             privileged: true
             runAsUser: 0
