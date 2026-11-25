@@ -19,7 +19,7 @@ keywords:
   - sustainability
 annotations:
   category: Monitoring
-#dependencies:
-#  - name: owner-info
-#    repository: oci://keppel.eu-de-1.cloud.sap/ccloud-helm
-#    version: 1.0.0
+dependencies:
+  - name: owner-info
+    repository: oci://keppel.eu-de-1.cloud.sap/ccloud-helm
+    version: 1.0.0
