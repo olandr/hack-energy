@@ -1,0 +1,34 @@
+
+
+namespace: rootstock
+
+# CPU burner Job (ramps to phase1Cores, holds, ramps to phase2Cores, holds, exits)
+cpuBurner:
+  # -- Deploy the CPU burner Job
+  enabled: false
+  # -- Job hard timeout in seconds
+  activeDeadlineSeconds: 900
+  # -- Delete the Job this many seconds after it finishes
+  ttlSecondsAfterFinished: 300
+  # -- Workers spawned per target core
+  workersPerCore: 10
+  # -- Target cores for phase 1
+  phase1Cores: 4
+  # -- Ramp duration to reach phase 1 cores (s)
+  ramp1Seconds: 60
+  # -- Hold time at phase 1 cores (s)
+  hold1Seconds: 300
+  # -- Target cores for phase 2
+  phase2Cores: 8
+  # -- Ramp duration to reach phase 2 cores (s)
+  ramp2Seconds: 60
+  # -- Hold time at phase 2 cores (s)
+  hold2Seconds: 300
+  # -- Container resources
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "32Mi"
+    # limits:
+    #   cpu: "2"
+    #   memory: "128Mi"

@@ -1,3 +1,7 @@
+cpuBurner:
+  # -- Deploy the CPU burner Job
+  enabled: true
+
 image:
   # -- Image pull policy
   pullPolicy: IfNotPresent
@@ -45,3 +49,15 @@ prometheus:
 
 perses:
   enabled: true
+
+# Static external-meter DaemonSet (writes a fixed energy value and holds it)
+staticEnergy:
+  # -- Deploy the static rootstock DaemonSet
+  enabled: true
+  # -- Fixed value written to hwmon0/energy1_input (µJ). Stays constant until redeployed.
+  value: "1000002"
+
+# Ramping external-meter DaemonSet (bumps energy1_input every 5s)
+rampEnergy:
+  # -- Deploy the ramping rootstock DaemonSet
+  enabled: false

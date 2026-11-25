@@ -392,30 +392,3 @@ staticEnergy:
 rampEnergy:
   # -- Deploy the ramping rootstock DaemonSet
   enabled: false
-
-# CPU burner Job (ramps to 1 core, holds, ramps to 2 cores, holds, exits)
-cpuBurner:
-  # -- Deploy the CPU burner Job
-  enabled: false
-  # -- Job hard timeout in seconds
-  activeDeadlineSeconds: 900
-  # -- Delete the Job this many seconds after it finishes
-  ttlSecondsAfterFinished: 300
-  # -- Workers spawned per target core
-  workersPerCore: 10
-  # -- Ramp duration to reach 1 core (s)
-  ramp1Seconds: 60
-  # -- Hold time at 1 core (s)
-  hold1Seconds: 300
-  # -- Ramp duration to reach 2 cores (s)
-  ramp2Seconds: 60
-  # -- Hold time at 2 cores (s)
-  hold2Seconds: 300
-  # -- Container resources
-  resources:
-    requests:
-      cpu: "100m"
-      memory: "32Mi"
-    limits:
-      cpu: "2"
-      memory: "128Mi"

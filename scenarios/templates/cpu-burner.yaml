@@ -8,14 +8,9 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: cpu-burner
-  namespace: {{ include "kepler.namespace" . }}
+  namespace: {{ .Values.namespace }}
   labels:
-    {{- include "kepler.labels" . | nindent 4 }}
     app.kubernetes.io/component: cpu-burner
-  {{- with .Values.annotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
 spec:
   backoffLimit: 0
   activeDeadlineSeconds: {{ .Values.cpuBurner.activeDeadlineSeconds }}
@@ -23,12 +18,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "kepler.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: cpu-burner
-      {{- with .Values.annotations }}
-      annotations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
     spec:
       restartPolicy: Never
       containers:
@@ -38,10 +28,14 @@ spec:
           env:
             - name: WORKERS_PER_CORE
               value: {{ .Values.cpuBurner.workersPerCore | quote }}
+            - name: PHASE1_CORES
+              value: {{ .Values.cpuBurner.phase1Cores | quote }}
             - name: RAMP1_SECONDS
               value: {{ .Values.cpuBurner.ramp1Seconds | quote }}
             - name: HOLD1_SECONDS
               value: {{ .Values.cpuBurner.hold1Seconds | quote }}
+            - name: PHASE2_CORES
+              value: {{ .Values.cpuBurner.phase2Cores | quote }}
             - name: RAMP2_SECONDS
               value: {{ .Values.cpuBurner.ramp2Seconds | quote }}
             - name: HOLD2_SECONDS
@@ -53,7 +47,26 @@ spec:
               trap 'echo stopping; kill $pids 2>/dev/null || true; exit 0' TERM INT
 
               spawn_worker() {
-                sh -c 'while :; do :; done' &
+                sh -c '
+                  # Burn real CPU time: tight loop doing dense integer math.
+                  # Each iteration performs many arithmetic ops so the process
+                  # spends its time computing rather than idling on shell parsing.
+                  a=1
+                  b=2
+                  c=3
+                  while :; do
+                    n=0
+                    while [ "$n" -lt 2000 ]; do
+                      a=$(((a * 1103515245 + 12345) % 2147483647))
+                      b=$(((b ^ (a << 3)) + (a >> 2)))
+                      c=$(((c * 31 + b) % 2147483647))
+                      a=$(((a + b + c) % 2147483647))
+                      b=$(((b * a + 7919) % 2147483647))
+                      c=$(((c ^ b) + (a * 131))) 
+                      n=$((n + 1))
+                    done
+                  done
+                ' &
                 pids="$pids $!"
               }
 
@@ -75,14 +88,14 @@ spec:
                 done
               }
 
-              echo "phase 1: ramp to 1 core over ${RAMP1_SECONDS}s"
-              ramp_to $((1 * WORKERS_PER_CORE)) "$RAMP1_SECONDS"
-              echo "phase 1: hold at 1 core for ${HOLD1_SECONDS}s"
+              echo "phase 1: ramp to ${PHASE1_CORES} core(s) over ${RAMP1_SECONDS}s"
+              ramp_to $((PHASE1_CORES * WORKERS_PER_CORE)) "$RAMP1_SECONDS"
+              echo "phase 1: hold at ${PHASE1_CORES} core(s) for ${HOLD1_SECONDS}s"
               sleep "$HOLD1_SECONDS"
 
-              echo "phase 2: ramp to 2 cores over ${RAMP2_SECONDS}s"
-              ramp_to $((2 * WORKERS_PER_CORE)) "$RAMP2_SECONDS"
-              echo "phase 2: hold at 2 cores for ${HOLD2_SECONDS}s"
+              echo "phase 2: ramp to ${PHASE2_CORES} core(s) over ${RAMP2_SECONDS}s"
+              ramp_to $((PHASE2_CORES * WORKERS_PER_CORE)) "$RAMP2_SECONDS"
+              echo "phase 2: hold at ${PHASE2_CORES} core(s) for ${HOLD2_SECONDS}s"
               sleep "$HOLD2_SECONDS"
 
               echo "done, stopping workers"
